@@ -1,15 +1,10 @@
 //! Async versions of traits for issuing Diesel queries.
 
 use async_trait::async_trait;
-use diesel::{
-    connection::{Connection as DieselConnection, SimpleConnection},
-    dsl::Limit,
-    query_dsl::{
-        methods::{ExecuteDsl, LimitDsl, LoadQuery},
-        RunQueryDsl,
-    },
-    result::Error as DieselError,
-};
+use diesel::{connection::{Connection as DieselConnection, SimpleConnection}, dsl::Limit, query_dsl::{
+    methods::{ExecuteDsl, LimitDsl, LoadQuery},
+    RunQueryDsl,
+}, result::Error as DieselError};
 
 /// An async variant of [`diesel::connection::SimpleConnection`].
 #[async_trait]
@@ -87,6 +82,10 @@ where
     AsyncConn: Send + Sync + AsyncConnection<Conn, E>,
     E: From<DieselError> + Send + 'static,
 {
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    fields(otel.kind="client"),
+    skip_all,
+    ))]
     async fn execute_async(self, asc: &AsyncConn) -> Result<usize, E>
     where
         Self: ExecuteDsl<Conn>,
@@ -94,6 +93,9 @@ where
         asc.run(|conn| self.execute(conn).map_err(E::from)).await
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    skip_all,
+    ))]
     async fn load_async<U>(self, asc: &AsyncConn) -> Result<Vec<U>, E>
     where
         U: Send + 'static,
@@ -102,6 +104,14 @@ where
         asc.run(|conn| self.load(conn).map_err(E::from)).await
     }
 
+    //     fields(
+    //     otel.kind="client",
+    //     sql,
+    //     tmp = std::any::type_name::<Self>(),
+    //     ),
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    skip_all,
+    ))]
     async fn get_result_async<U>(self, asc: &AsyncConn) -> Result<U, E>
     where
         U: Send + 'static,
@@ -110,6 +120,9 @@ where
         asc.run(|conn| self.get_result(conn).map_err(E::from)).await
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    skip_all,
+    ))]
     async fn get_results_async<U>(self, asc: &AsyncConn) -> Result<Vec<U>, E>
     where
         U: Send + 'static,
@@ -119,6 +132,9 @@ where
             .await
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    skip_all,
+    ))]
     async fn first_async<U>(self, asc: &AsyncConn) -> Result<U, E>
     where
         U: Send + 'static,
@@ -149,6 +165,9 @@ where
     AsyncConn: Send + Sync + AsyncConnection<Conn, E>,
     E: 'static + Send + From<DieselError>,
 {
+    #[cfg_attr(feature = "tracing", tracing::instrument(
+    skip_all,
+    ))]
     async fn save_changes_async<Output>(self, asc: &AsyncConn) -> Result<Output, E>
     where
         Conn: diesel::query_dsl::UpdateAndFetchResults<Self, Output>,

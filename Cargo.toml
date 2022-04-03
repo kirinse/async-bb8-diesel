@@ -13,6 +13,7 @@ bb8 = "0.7"
 async-trait = "0.1.52"
 thiserror = "1.0"
 tokio = { version = "1.17", default-features = false, features = [ "rt-multi-thread" ] }
+tracing = { version = "0.1", optional = true }
 
 [dependencies.diesel]
 version = "2.0"
