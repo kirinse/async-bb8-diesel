@@ -1,5 +1,5 @@
 use async_bb8_diesel::{
-    AsyncConnection, AsyncRunQueryDsl, AsyncSaveChangesDsl, ConnectionError, PoolError,
+    AsyncConnection, AsyncRunQueryDsl, AsyncSaveChangesDsl, ConnectionError, PoolError, OptionalExtension,
 };
 use diesel::{pg::PgConnection, prelude::*};
 
@@ -98,14 +98,23 @@ async fn main() {
             .unwrap();
         Ok::<(), PoolError>(())
     })
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     // Transaction returning custom error types.
     let _: MyError = pool
         .transaction(|_| {
-            return Err::<(), MyError>(MyError::Other {});
+            Err::<(), MyError>(MyError::Other {})
         })
         .await
         .unwrap_err();
+
+    // Access the result via OptionalExtension
+    assert!(dsl::users
+        .filter(dsl::id.eq(12345))
+        .first_async::<User>(&pool)
+        .await
+        .optional()
+        .unwrap()
+        .is_none());
 }
