@@ -1,5 +1,6 @@
 use async_bb8_diesel::{
-    AsyncConnection, AsyncRunQueryDsl, AsyncSaveChangesDsl, ConnectionError, PoolError,
+    AsyncConnection, AsyncRunQueryDsl, AsyncSaveChangesDsl, ConnectionError, OptionalExtension,
+    PoolError,
 };
 use diesel::{pg::PgConnection, prelude::*};
 
@@ -44,7 +45,9 @@ impl From<diesel::result::Error> for MyError {
 async fn main() {
     use users::dsl;
 
-    let manager = async_bb8_diesel::ConnectionManager::<PgConnection>::new("localhost:1234");
+    let manager = async_bb8_diesel::ConnectionManager::<PgConnection>::new(
+        "postgres://postgres:1234qwer@localhost/zmk",
+    );
     let pool = bb8::Pool::builder().build(manager).await.unwrap();
 
     // Insert by values
@@ -108,4 +111,25 @@ async fn main() {
         })
         .await
         .unwrap_err();
+
+    // Asynchronous transaction.
+    pool.transaction_async(|conn| async move {
+        diesel::update(dsl::users)
+            .filter(dsl::id.eq(0))
+            .set(dsl::name.eq("Let's change the name again"))
+            .execute_async(&conn)
+            .await
+            .map_err(|e| PoolError::Connection(e))
+    })
+    .await
+    .unwrap();
+
+    // Access the result via OptionalExtension
+    assert!(dsl::users
+        .filter(dsl::id.eq(12345))
+        .first_async::<User>(&pool)
+        .await
+        .optional()
+        .unwrap()
+        .is_none());
 }
